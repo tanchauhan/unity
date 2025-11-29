@@ -29,27 +29,44 @@ OneButton::OneButton() {
 }
 
 // Initialize the OneButton library.
-OneButton::OneButton(const int pin, const bool activeLow, const bool pullupActive) {
-  setup(pin, pullupActive ? INPUT_PULLUP : INPUT, activeLow);
+OneButton::OneButton(GPIO_TypeDef* port, uint16_t pin,
+                     bool activeLow, bool pullupActive)
+{
+    this->gpioPort = port;
+    this->gpioPin  = pin;
+    this->activeLow = activeLow;
+
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin = pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = pullupActive ? GPIO_PULLUP : GPIO_NOPULL;
+
+    HAL_GPIO_Init(port, &GPIO_InitStruct);
 }  // OneButton
 
 
 // initialize or re-initialize the input pin
-void OneButton::setup(const uint8_t pin, const uint8_t mode, const bool activeLow) {
-  _pin = pin;
+void OneButton::setup(GPIO_TypeDef* port, uint16_t pin, bool activeLow, bool pullupActive)
+{
+    gpioPort = port;
+    gpioPin  = pin;
+    this->activeLow = activeLow;
 
-  if (activeLow) {
-    // the button connects the input pin to GND when pressed.
-    _buttonPressed = LOW;
+    // Determine logic level for button-pressed interpretation
+    _buttonPressed = activeLow ? GPIO_PIN_RESET : GPIO_PIN_SET;
 
-  } else {
-    // the button connects the input pin to VCC when pressed.
-    _buttonPressed = HIGH;
-  }
-
-  pinMode(pin, mode);
+    // HAL GPIO initialization
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin  = pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = pullupActive ? GPIO_PULLUP : GPIO_NOPULL;
+    HAL_GPIO_Init(port, &GPIO_InitStruct);
 }
 
+uint32_t millis(void) {
+    return HAL_GetTick();
+}
 
 // explicitly set the number of millisec that have to pass by before a click is assumed stable.
 void OneButton::setDebounceMs(const int ms) {
@@ -101,7 +118,7 @@ void OneButton::attachClick(parameterizedCallbackFunction newFunction, void *par
 // save function for doubleClick event
 void OneButton::attachDoubleClick(callbackFunction newFunction) {
   _doubleClickFunc = newFunction;
-  _maxClicks = max(_maxClicks, 2);
+  _maxClicks = std::max(_maxClicks, 2);
 }  // attachDoubleClick
 
 
@@ -109,14 +126,14 @@ void OneButton::attachDoubleClick(callbackFunction newFunction) {
 void OneButton::attachDoubleClick(parameterizedCallbackFunction newFunction, void *parameter) {
   _paramDoubleClickFunc = newFunction;
   _doubleClickFuncParam = parameter;
-  _maxClicks = max(_maxClicks, 2);
+  _maxClicks = std::max(_maxClicks, 2);
 }  // attachDoubleClick
 
 
 // save function for multiClick event
 void OneButton::attachMultiClick(callbackFunction newFunction) {
   _multiClickFunc = newFunction;
-  _maxClicks = max(_maxClicks, 100);
+  _maxClicks = std::max(_maxClicks, 100);
 }  // attachMultiClick
 
 
@@ -124,7 +141,7 @@ void OneButton::attachMultiClick(callbackFunction newFunction) {
 void OneButton::attachMultiClick(parameterizedCallbackFunction newFunction, void *parameter) {
   _paramMultiClickFunc = newFunction;
   _multiClickFuncParam = parameter;
-  _maxClicks = max(_maxClicks, 100);
+  _maxClicks = std::max(_maxClicks, 100);
 }  // attachMultiClick
 
 
@@ -215,7 +232,7 @@ bool OneButton::debounce(const bool value) {
  */
 void OneButton::tick(void) {
   if (_pin >= 0) {
-    _fsm(debounce(digitalRead(_pin) == _buttonPressed));
+    _fsm(debounce(HAL_GPIO_ReadPin(gpioPort, gpioPin) == _buttonPressed));
   }
 }  // tick()
 

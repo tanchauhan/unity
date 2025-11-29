@@ -25,7 +25,19 @@
 #ifndef OneButton_h
 #define OneButton_h
 
-#include "Arduino.h"
+#include <stdint.h>   // for uint8_t, uint16_t, etc.
+#include <stdbool.h>  // for bool
+#include <stddef.h>   // for NULL
+#include "stm32f1xx_hal.h"
+#include <algorithm>
+
+#ifndef HIGH
+#define HIGH 1
+#endif
+#ifndef LOW
+#define LOW 0
+#endif
+
 
 // ----- Callback function types -----
 
@@ -51,7 +63,7 @@ public:
    * @param activeLow Set to true when the input level is LOW when the button is pressed, Default is true.
    * @param pullupActive Activate the internal pullup when available. Default is true.
    */
-  explicit OneButton(const int pin, const bool activeLow = true, const bool pullupActive = true);
+  explicit OneButton(GPIO_TypeDef* port,const uint16_t pin,const bool activeLow = true, const bool pullupActive= true);
 
   // ----- Set runtime parameters -----
 
@@ -62,7 +74,8 @@ public:
    * @param mode Any of the modes also used in pinMode like INPUT or INPUT_PULLUP (default).
    * @param activeLow Set to true when the input level is LOW when the button is pressed, Default is true.
    */
-  void setup(const uint8_t pin, const uint8_t mode = INPUT_PULLUP, const bool activeLow = true);
+  void setup(GPIO_TypeDef* port, uint16_t pin, bool activeLow=true, bool pullupActive=true);
+  uint32_t millis(void);
 
 
   /**
@@ -214,7 +227,9 @@ private:
   unsigned int _click_ms = 400;  // number of msecs before a click is detected.
   unsigned int _press_ms = 800;  // number of msecs before a long button press is detected
   unsigned int _idle_ms = 1000;  // number of msecs before idle is detected
-
+  GPIO_TypeDef* gpioPort;
+  uint16_t gpioPin;
+  bool activeLow;
   int _buttonPressed = 0;  // this is the level of the input pin when the button is pressed.
                            // LOW if the button connects the input pin to GND when pressed.
                            // HIGH if the button connects the input pin to VCC when pressed.
